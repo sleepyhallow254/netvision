@@ -114,6 +114,18 @@
   gap: 0.6rem;
 }
 
+.router-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.router-meta-grid input {
+  padding: 0.75rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid #dfe7f2;
+}
+
 .router-form label {
   font-weight: 700;
   color: #101a2b;
@@ -149,6 +161,103 @@
   color: #23324a;
 }
 
+.router-notice {
+  margin-top: 0.8rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 14px;
+  background: #eef6ff;
+  color: #355179;
+}
+
+.router-embed-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #e4ebf7;
+}
+
+.router-frame {
+  width: 100%;
+  min-height: 420px;
+  border: 1px solid #dfe7f2;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.frame-placeholder {
+  margin: 0;
+  padding: 1rem;
+  border-radius: 14px;
+  background: #f8fbff;
+  color: #5f6b82;
+}
+
+.management-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 18px;
+  background: #f8fbff;
+  border: 1px solid #e4ebf7;
+}
+
+.management-header h3 {
+  margin: 0 0 0.35rem;
+  color: #101a2b;
+}
+
+.management-header p {
+  margin: 0;
+  color: #5f6b82;
+}
+
+.management-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 0.9rem;
+}
+
+.management-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e7edf8;
+}
+
+.management-card label {
+  font-weight: 700;
+  color: #101a2b;
+}
+
+.management-card input {
+  padding: 0.7rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid #dfe7f2;
+}
+
+.management-card button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.7rem 0.85rem;
+  background: #2b6cff;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.management-card h4 {
+  margin: 0;
+  color: #101a2b;
+}
+
+.management-card p {
+  margin: 0;
+  color: #5f6b82;
+}
+
 .error-text {
   margin-top: 0.8rem;
   color: #b42318;
@@ -182,12 +291,15 @@
 
 @media (max-width: 960px) {
   .stats-grid,
-  .content-grid {
+  .content-grid,
+  .management-grid {
     grid-template-columns: 1fr;
   }
 
   .hero-panel,
-  .router-input-row {
+  .router-input-row,
+  .router-meta-grid {
     flex-direction: column;
+    grid-template-columns: 1fr;
   }
 }

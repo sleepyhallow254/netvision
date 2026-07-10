@@ -2,11 +2,21 @@ import { useEffect, useState } from 'react'
 import './App.css'
 
 const API_BASE = 'http://localhost:3001'
+const STORAGE_KEY = 'netvision-router-profile'
 
 function App() {
   const [status, setStatus] = useState(null)
   const [routerIp, setRouterIp] = useState('192.168.1.1')
   const [routerResult, setRouterResult] = useState(null)
+  const [routerModel, setRouterModel] = useState('')
+  const [routerFirmware, setRouterFirmware] = useState('')
+  const [routerUsername, setRouterUsername] = useState('')
+  const [routerPassword, setRouterPassword] = useState('')
+  const [ssid, setSsid] = useState('MyWiFi')
+  const [password, setPassword] = useState('')
+  const [maxClients, setMaxClients] = useState('20')
+  const [embeddedUrl, setEmbeddedUrl] = useState('')
+  const [embeddedLabel, setEmbeddedLabel] = useState('Router dashboard')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -42,7 +52,8 @@ function App() {
 
       const data = await response.json()
       setRouterResult(data)
-      window.open(data.openUrl, '_blank', 'noopener,noreferrer')
+      setEmbeddedUrl(data.openUrl)
+      setEmbeddedLabel('Router gateway')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -50,11 +61,116 @@ function App() {
     }
   }
 
+  const openManagementPage = (action) => {
+    const base = `http://${routerIp}`
+    const firmwareHints = {
+      tplink: [
+        `${base}/`,
+        `${base}/userRpm/WlanNetworkRpm.htm`,
+        `${base}/userRpm/WlanMacFilterRpm.htm`,
+      ],
+      tp_link: [
+        `${base}/`,
+        `${base}/userRpm/WlanNetworkRpm.htm`,
+        `${base}/userRpm/WlanMacFilterRpm.htm`,
+      ],
+      asus: [
+        `${base}/`,
+        `${base}/Advanced_Wireless_Content.asp`,
+        `${base}/Advanced_AccessControl_Content.asp`,
+      ],
+      netgear: [
+        `${base}/`,
+        `${base}/wireless.htm`,
+        `${base}/attached_devices.asp`,
+      ],
+      dlink: [
+        `${base}/`,
+        `${base}/wireless.htm`,
+        `${base}/tools_admin.htm`,
+      ],
+      default: [
+        `${base}/`,
+        `${base}/userRpm/WlanNetworkRpm.htm`,
+        `${base}/wireless.htm`,
+        `${base}/Advanced_Wireless_Content.asp`,
+        `${base}/client-list.htm`,
+      ],
+    }
+
+    const model = (routerModel || '').toLowerCase()
+    const firmware = (routerFirmware || '').toLowerCase()
+    const candidates = {
+      wireless: [
+        ...(model.includes('tplink') || model.includes('tp-link') ? firmwareHints.tplink : []),
+        ...(model.includes('asus') ? firmwareHints.asus : []),
+        ...(model.includes('netgear') ? firmwareHints.netgear : []),
+        ...(model.includes('dlink') ? firmwareHints.dlink : []),
+        ...firmwareHints.default,
+      ],
+      security: [
+        `${base}/userRpm/AdvancedSecurityRpm.htm`,
+        `${base}/wireless-security.htm`,
+        `${base}/Advanced_Wireless_Content.asp`,
+        `${base}/`,
+      ],
+      clients: [
+        `${base}/userRpm/WlanMacFilterRpm.htm`,
+        `${base}/client-list.htm`,
+        `${base}/attached_devices.asp`,
+        `${base}/`,
+      ],
+      access: [
+        `${base}/userRpm/WlanMacFilterRpm.htm`,
+        `${base}/access-control.htm`,
+        `${base}/Advanced_AccessControl_Content.asp`,
+        `${base}/`,
+      ],
+    }
+
+    const urls = Array.from(new Set(candidates[action] || candidates.wireless))
+    const nextUrl = urls[0]
+    setEmbeddedUrl(nextUrl)
+    setEmbeddedLabel(action === 'wireless' ? 'Wireless settings' : action === 'security' ? 'Security settings' : action === 'clients' ? 'Client list' : 'Access control')
+  }
+
   useEffect(() => {
+    const storedProfile = window.localStorage.getItem(STORAGE_KEY)
+    if (storedProfile) {
+      try {
+        const parsed = JSON.parse(storedProfile)
+        setRouterIp(parsed.routerIp || '192.168.1.1')
+        setRouterModel(parsed.routerModel || '')
+        setRouterFirmware(parsed.routerFirmware || '')
+        setRouterUsername(parsed.routerUsername || '')
+        setRouterPassword(parsed.routerPassword || '')
+        setSsid(parsed.ssid || 'MyWiFi')
+        setPassword(parsed.password || '')
+        setMaxClients(parsed.maxClients || '20')
+      } catch (error) {
+        console.error('Unable to restore saved router profile', error)
+      }
+    }
+
     loadStatus()
     const timer = window.setInterval(loadStatus, 5000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    const profile = {
+      routerIp,
+      routerModel,
+      routerFirmware,
+      routerUsername,
+      routerPassword,
+      ssid,
+      password,
+      maxClients,
+    }
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile))
+  }, [routerIp, routerModel, routerFirmware, routerUsername, routerPassword, ssid, password, maxClients])
 
   return (
     <div className="dashboard-shell">
@@ -117,6 +233,37 @@ function App() {
                 {loading ? 'Checking...' : 'Open settings'}
               </button>
             </div>
+
+            <div className="router-meta-grid">
+              <input
+                id="router-model"
+                type="text"
+                value={routerModel}
+                onChange={(event) => setRouterModel(event.target.value)}
+                placeholder="Router model (optional)"
+              />
+              <input
+                id="router-firmware"
+                type="text"
+                value={routerFirmware}
+                onChange={(event) => setRouterFirmware(event.target.value)}
+                placeholder="Firmware version (optional)"
+              />
+              <input
+                id="router-username"
+                type="text"
+                value={routerUsername}
+                onChange={(event) => setRouterUsername(event.target.value)}
+                placeholder="Admin username"
+              />
+              <input
+                id="router-password"
+                type="password"
+                value={routerPassword}
+                onChange={(event) => setRouterPassword(event.target.value)}
+                placeholder="Admin password"
+              />
+            </div>
           </form>
 
           {error ? <p className="error-text">{error}</p> : null}
@@ -134,6 +281,90 @@ function App() {
               </p>
             </div>
           ) : null}
+
+          <div className="router-notice">
+            <p>
+              Management pages open inside this dashboard when the router allows embedding.
+              If your router blocks it, the app will still keep you on this page and show the relevant guidance.
+            </p>
+          </div>
+
+          <div className="router-embed-panel">
+            <div className="panel-header">
+              <div>
+                <p className="eyebrow">In-app router view</p>
+                <h3>{embeddedLabel}</h3>
+              </div>
+            </div>
+            {embeddedUrl ? (
+              <iframe
+                className="router-frame"
+                src={embeddedUrl}
+                title={embeddedLabel}
+                loading="lazy"
+              />
+            ) : (
+              <p className="frame-placeholder">
+                Choose a router action above to load the management page here.
+              </p>
+            )}
+          </div>
+
+          <div className="management-panel">
+            <div className="management-header">
+              <h3>Router management shortcuts</h3>
+              <p>
+                These buttons open the common router admin pages where SSID,
+                password, client limits, and device disconnect options are usually managed.
+              </p>
+            </div>
+
+            <div className="management-grid">
+              <div className="management-card">
+                <label htmlFor="ssid">Wi-Fi name</label>
+                <input
+                  id="ssid"
+                  value={ssid}
+                  onChange={(event) => setSsid(event.target.value)}
+                  placeholder="Network name"
+                />
+                <label htmlFor="password">Wi-Fi password</label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="New password"
+                />
+                <button type="button" onClick={() => openManagementPage('wireless')}>
+                  Open wireless settings
+                </button>
+              </div>
+
+              <div className="management-card">
+                <label htmlFor="max-clients">Max connected users</label>
+                <input
+                  id="max-clients"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={maxClients}
+                  onChange={(event) => setMaxClients(event.target.value)}
+                />
+                <button type="button" onClick={() => openManagementPage('access')}>
+                  Open access control
+                </button>
+              </div>
+
+              <div className="management-card">
+                <h4>Disconnect devices</h4>
+                <p>Use the router’s client list page to remove a device from the network.</p>
+                <button type="button" onClick={() => openManagementPage('clients')}>
+                  Open client list
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="side-stack">
