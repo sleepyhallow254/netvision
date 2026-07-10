@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
-const API_BASE = 'http://localhost:3001'
+const API_BASE = import.meta.env.VITE_API_BASE || ''
 const STORAGE_KEY = 'netvision-router-profile'
 
 function App() {

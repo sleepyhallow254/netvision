@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const fs = require('node:fs')
+const path = require('node:path')
 const os = require('node:os')
 const { execFile } = require('node:child_process')
 
@@ -9,6 +10,32 @@ const port = process.env.PORT || 3001
 
 app.use(cors())
 app.use(express.json())
+
+const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'dist')
+const indexPath = path.join(frontendBuildPath, 'index.html')
+
+if (fs.existsSync(frontendBuildPath)) {
+  app.use(express.static(frontendBuildPath))
+}
+
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next()
+  }
+
+  const cleanPath = req.path === '/' ? '' : req.path.replace(/^\/+/, '')
+  const candidatePath = path.join(frontendBuildPath, cleanPath)
+
+  if (fs.existsSync(candidatePath) && path.extname(cleanPath)) {
+    return res.sendFile(candidatePath)
+  }
+
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath)
+  }
+
+  return res.status(404).send('Frontend build not found. Run the frontend build first.')
+})
 
 function formatUptime(seconds) {
   const days = Math.floor(seconds / 86400)
@@ -173,6 +200,16 @@ async function probeRouter(routerIp) {
 
 app.get('/api/status', (req, res) => {
   res.json(collectSystemSnapshot())
+})
+
+app.get(/^\/(?!api).*/, (req, res) => {
+  const indexPath = path.join(frontendBuildPath, 'index.html')
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath)
+    return
+  }
+
+  res.status(404).send('Frontend build not found. Run the frontend build first.')
 })
 
 app.post('/api/router', async (req, res) => {
