@@ -303,3 +303,49 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Error Boundary Styles */
+.error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f4f7fc 0%, #eef4ff 100%);
+}
+
+.error-panel {
+  background: #ffffff;
+  border: 2px solid #d4433d;
+  border-radius: 20px;
+  padding: 2rem;
+  max-width: 500px;
+  text-align: center;
+  box-shadow: 0 14px 35px rgba(212, 67, 61, 0.15);
+}
+
+.error-panel h1 {
+  margin: 0 0 1rem;
+  color: #d4433d;
+  font-size: 1.8rem;
+}
+
+.error-panel p {
+  margin: 0 0 1.5rem;
+  color: #5f6b82;
+  font-size: 1rem;
+}
+
+.error-panel button {
+  padding: 0.8rem 2rem;
+  background: #2b6cff;
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background 0.3s ease;
+}
+
+.error-panel button:hover {
+  background: #1a50d9;
+}

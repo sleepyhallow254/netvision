@@ -4,12 +4,31 @@ const fs = require('node:fs')
 const path = require('node:path')
 const os = require('node:os')
 const { execFile } = require('node:child_process')
+require('dotenv').config()
 
 const app = express()
 const port = process.env.PORT || 3001
+const nodeEnv = process.env.NODE_ENV || 'development'
+const corsOrigin = process.env.CORS_ORIGIN || '*'
+const logLevel = process.env.LOG_LEVEL || 'info'
 
-app.use(cors())
+// Utility logging function
+function log(message, level = 'info') {
+  const levels = { error: 0, warn: 1, info: 2, debug: 3 }
+  const currentLevel = levels[logLevel] ?? 2
+  const msgLevel = levels[level] ?? 2
+  if (msgLevel <= currentLevel) {
+    // eslint-disable-next-line no-console
+    console.log(`[${level.toUpperCase()}] ${new Date().toISOString()} - ${message}`)
+  }
+}
+
+app.use(cors({ origin: corsOrigin }))
 app.use(express.json())
+app.use((req, res, next) => {
+  log(`${req.method} ${req.path}`, 'debug')
+  next()
+})
 
 const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'dist')
 const indexPath = path.join(frontendBuildPath, 'index.html')
@@ -72,7 +91,8 @@ function getInterfaceStats() {
 
   raw.forEach((line) => {
     const [name, ...values] = line.split(/:\s+/)
-    const [rxBytes, rxPackets, rxErrs, rxDrop, rxFifo, rxFrame, rxCompressed, rxMulticast, txBytes, txPackets, txErrs, txDrop, txFifo, txFrame, txCompressed, txMulticast] = values[0].split(/\s+/)
+    // Parse /proc/net/dev format: rx_bytes rx_packets rx_errs rx_drop ... tx_bytes tx_packets tx_errs tx_drop ...
+    const [rxBytes, , , , , , , , txBytes] = values[0].split(/\s+/)
 
     if (!name || name.startsWith('lo')) {
       return
@@ -187,6 +207,7 @@ async function probeRouter(routerIp) {
         snippet,
       }
     } catch (error) {
+      log(`Probe failed for ${target}: ${error.message}`, 'debug')
       // continue to next target
     }
   }
@@ -199,7 +220,16 @@ async function probeRouter(routerIp) {
 }
 
 app.get('/api/status', (req, res) => {
-  res.json(collectSystemSnapshot())
+  try {
+    const snapshot = collectSystemSnapshot()
+    res.json(snapshot)
+  } catch (error) {
+    log(`Error collecting system snapshot: ${error.message}`, 'error')
+    res.status(500).json({
+      error: 'Failed to collect system status',
+      message: nodeEnv === 'development' ? error.message : 'Internal server error',
+    })
+  }
 })
 
 app.get(/^\/(?!api).*/, (req, res) => {
@@ -212,24 +242,64 @@ app.get(/^\/(?!api).*/, (req, res) => {
   res.status(404).send('Frontend build not found. Run the frontend build first.')
 })
 
-app.post('/api/router', async (req, res) => {
-  const routerIp = req.body?.routerIp?.trim()
-
-  if (!routerIp) {
-    return res.status(400).json({ error: 'Please provide a router IP address.' })
-  }
-
-  const [reachable, probe] = await Promise.all([pingHost(routerIp), probeRouter(routerIp)])
-
+// Health check endpoint
+app.get('/api/health', (req, res) => {
   res.json({
-    routerIp,
-    reachable: reachable || probe.reachable,
-    ping: reachable,
-    probe,
-    openUrl: `http://${routerIp}`,
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
   })
 })
 
+// 404 handler
+app.use((req, res) => {
+  log(`404 Not Found: ${req.method} ${req.path}`, 'warn')
+  res.status(404).json({ error: 'Not found' })
+})
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  log(`Unhandled error: ${err.message}`, 'error')
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal server error',
+    ...(nodeEnv === 'development' && { stack: err.stack }),
+  })
+})
+
+app.post('/api/router', async (req, res) => {
+  try {
+    const routerIp = req.body?.routerIp?.trim()
+
+    if (!routerIp) {
+      return res.status(400).json({ error: 'Please provide a router IP address.' })
+    }
+
+    // Validate IP format (basic check)
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/
+    if (!ipRegex.test(routerIp)) {
+      return res.status(400).json({ error: 'Invalid IP address format.' })
+    }
+
+    const [reachable, probe] = await Promise.all([pingHost(routerIp), probeRouter(routerIp)])
+
+    res.json({
+      routerIp,
+      reachable: reachable || probe.reachable,
+      ping: reachable,
+      probe,
+      openUrl: `http://${routerIp}`,
+    })
+  } catch (error) {
+    log(`Error probing router: ${error.message}`, 'error')
+    res.status(500).json({
+      error: 'Failed to probe router',
+      message: nodeEnv === 'development' ? error.message : 'Internal server error',
+    })
+  }
+})
+
 app.listen(port, () => {
-  console.log(`Backend listening on http://localhost:${port}`)
+  log(`Backend listening on http://localhost:${port}`, 'info')
+  log(`Environment: ${nodeEnv}`, 'info')
+  log(`CORS Origin: ${corsOrigin}`, 'debug')
 })

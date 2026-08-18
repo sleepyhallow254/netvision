@@ -24,13 +24,15 @@ function App() {
     try {
       const response = await fetch(`${API_BASE}/api/status`)
       if (!response.ok) {
-        throw new Error('Unable to fetch system status')
+        throw new Error(`HTTP ${response.status}: Unable to fetch system status`)
       }
       const data = await response.json()
       setStatus(data)
       setError('')
     } catch (err) {
-      setError(err.message)
+      console.error('Status fetch error:', err)
+      setError(err.message || 'Unable to load system status')
+      setStatus(null)
     }
   }
 
@@ -47,7 +49,8 @@ function App() {
       })
 
       if (!response.ok) {
-        throw new Error('Router probe failed')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP ${response.status}: Router probe failed`)
       }
 
       const data = await response.json()
@@ -55,7 +58,9 @@ function App() {
       setEmbeddedUrl(data.openUrl)
       setEmbeddedLabel('Router gateway')
     } catch (err) {
-      setError(err.message)
+      console.error('Router probe error:', err)
+      setError(err.message || 'Router probe failed')
+      setRouterResult(null)
     } finally {
       setLoading(false)
     }
@@ -99,7 +104,7 @@ function App() {
     }
 
     const model = (routerModel || '').toLowerCase()
-    const firmware = (routerFirmware || '').toLowerCase()
+    const _firmware = (routerFirmware || '').toLowerCase()
     const candidates = {
       wireless: [
         ...(model.includes('tplink') || model.includes('tp-link') ? firmwareHints.tplink : []),
